@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="hero mb-4 cuotas-hero">
+  <div>
+    <div class="eyebrow">Seguimiento operativo</div>
+    <h2 class="fw-bold mb-1">Cuotas de Préstamos</h2>
+    <div class="text-muted">Vista filtrable por período, estado y entidad. Datos enriquecidos desde <strong>Cuotas + Seguimiento</strong>.</div>
+  </div>
+  <a class="btn btn-primary btn-lg" href="{{ url_for('cuotas', periodo=periodo, estado=estado, entidad=entidad, buscar=buscar) }}">Actualizar desde Excel</a>
+</div>
+
+<div class="panel mb-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <h5 class="mb-0">Filtros</h5>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('cuotas') }}">Limpiar filtros</a>
+  </div>
+  <form class="row g-3">
+    <div class="col-sm-6 col-xl-3">
+      <label class="form-label">Período</label>
+      <select class="form-select" name="periodo">
+        <option value="">Todos los períodos</option>
+        {% for key, label in periodos %}
+          <option value="{{key}}" {% if periodo==key %}selected{% endif %}>{{label}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <label class="form-label">Estado</label>
+      <select class="form-select" name="estado">
+        <option value="">Todos los estados</option>
+        {% for e in ['Vencida','Próxima','Al día','Pagada'] %}
+          <option value="{{e}}" {% if estado==e %}selected{% endif %}>{{e}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <label class="form-label">Entidad</label>
+      <select class="form-select" name="entidad">
+        <option value="">Todas las entidades</option>
+        {% for e in entidades %}
+          <option value="{{e}}" {% if entidad==e %}selected{% endif %}>{{e}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-sm-6 col-xl-2">
+      <label class="form-label">Buscar ID / entidad</label>
+      <input class="form-control" name="buscar" value="{{buscar}}" placeholder="Ej. 23430">
+    </div>
+    <div class="col-xl-1 d-grid align-items-end">
+      <button class="btn btn-primary mt-xl-4">Filtrar</button>
+    </div>
+  </form>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3"><div class="kpi kpi-main"><span>Cuotas pendientes</span><strong>{{ summary.cuotas_pendientes }}</strong><small>Según filtros aplicados</small></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="kpi"><span>Total período</span><strong>{{ summary.total_periodo }}</strong><small>Total a pagar filtrado</small></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="kpi warning"><span>Cuota promedio</span><strong>{{ summary.cuota_promedio }}</strong><small>Promedio de cuotas visibles</small></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="kpi danger"><span>Vencidas</span><strong>{{ summary.vencidas }}</strong><small>Cuotas vencidas del filtro</small></div></div>
+</div>
+
+<div class="panel">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <h5 class="mb-0">Detalle de cuotas</h5>
+    <div class="text-muted small">Se muestran hasta 1000 registros para mantener rápida la visualización.</div>
+  </div>
+  <div class="table-responsive cuotas-table-wrap">
+    <table class="table table-hover table-sm align-middle cuotas-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Entidad</th>
+          <th>Cuota</th>
+          <th>Vencimiento</th>
+          <th>Estado</th>
+          <th class="text-end">Total</th>
+          <th class="text-center">Cuotas Pend.</th>
+          <th class="text-end">TNA</th>
+          <th class="text-end">TEA</th>
+          <th>Fecha toma</th>
+          <th>Tipo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="fw-semibold">{{r.id_prestamo}}</td>
+          <td>{{r.entidad}}</td>
+          <td>{{r.nro_cuota}}{% if r.plazo and r.plazo > 0 %}/{{r.plazo}}{% endif %}</td>
+          <td>{{ r.fecha_vencimiento.strftime('%d/%m/%Y') if r.fecha_vencimiento==r.fecha_vencimiento else '' }}</td>
+          <td><span class="badge state-{{r.estado_calculado|lower|replace('ó','o')|replace('í','i')|replace(' ','-')}}">{{r.estado_calculado}}</span></td>
+          <td class="text-end fw-semibold">{{money(r.total_pagar)}}</td>
+          <td class="text-center"><span class="pill-soft">{{r.cuotas_pendientes}}</span></td>
+          <td class="text-end">{{pct(r.tna)}}</td>
+          <td class="text-end">{{pct(r.tea)}}</td>
+          <td>{{ r.fecha_inicio.strftime('%d/%m/%Y') if r.fecha_inicio==r.fecha_inicio else '' }}</td>
+          <td>{{r.tipo_amortizacion or '-'}}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

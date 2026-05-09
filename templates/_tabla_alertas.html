@@ -1,0 +1,14 @@
+<div class="table-responsive">
+<table class="table table-sm align-middle">
+  <thead><tr><th>ID</th><th>Entidad</th><th>Cuota</th><th>Vencimiento</th><th class="text-end">Total</th></tr></thead>
+  <tbody>
+  {% for _, r in vencidas.iterrows() %}
+  <tr>
+    <td>{{ r.id_prestamo }}</td><td>{{ r.entidad }}</td><td>{{ r.nro_cuota }}</td>
+    <td>{{ r.fecha_vencimiento.strftime('%d/%m/%Y') if r.fecha_vencimiento==r.fecha_vencimiento else '' }}</td>
+    <td class="text-end">{{ money(r.total_pagar) }}</td>
+  </tr>
+  {% else %}<tr><td colspan="5" class="text-muted">Sin registros.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
