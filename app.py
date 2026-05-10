@@ -459,7 +459,6 @@ def dashboard():
         **indicadores
     )
 
-
 @app.route("/cuotas")
 def cuotas():
     if "user" not in session:
