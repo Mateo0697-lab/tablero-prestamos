@@ -455,7 +455,6 @@ def dashboard():
 
     if cuotas.empty:
         vencidas = pd.DataFrame()
-        proximas = pd.DataFrame()
     else:
         abiertas = cuotas[
             ~cuotas["estado"].astype(str).str.lower().str.contains("pag", na=False)
@@ -465,10 +464,6 @@ def dashboard():
             abiertas["fecha_vencimiento"] < hoy
         ].copy()
 
-        proximas = abiertas[
-            abiertas["fecha_vencimiento"] >= hoy
-        ].sort_values("fecha_vencimiento").head(10).copy()
-
     metrics = indicadores.copy()
     metrics["actualizado"] = indicadores.get("ultima_lectura", "")
 
@@ -476,7 +471,6 @@ def dashboard():
         "dashboard.html",
         metrics=metrics,
         vencidas=vencidas,
-        proximas=proximas,
         **indicadores
     )
 
