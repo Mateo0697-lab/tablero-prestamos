@@ -51,7 +51,7 @@
 </div>
 
 <script>
-const chartData = {{ charts|tojson }};
+const chartData = {{ charts|default({"labels": [], "data": []}, true)|tojson }};
 const fmt = (v) => new Intl.NumberFormat('es-AR', {style:'currency', currency:'ARS', maximumFractionDigits:0}).format(v);
 
 new Chart(document.getElementById('entidades'), {
