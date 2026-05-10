@@ -15,16 +15,39 @@
     </thead>
 
     <tbody>
-        {% for _, r in tabla_alertas.iterrows() %}
-        <tr>
-            <td>{{ r.id_prestamo }}</td>
-            <td>{{ r.entidad }}</td>
-            <td>{{ r.nro_cuota }}</td>
-            <td>{{ r.fecha_vencimiento.strftime('%d/%m/%Y') if r.fecha_vencimiento is not none else '' }}</td>
-            <td>${{ "{:,.2f}".format(r.total).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
-            <td>{{ r.estado }}</td>
-        </tr>
-        {% endfor %}
+
+        {% if tabla_alertas.iterrows is defined %}
+
+            {% for _, r in tabla_alertas.iterrows() %}
+            <tr>
+                <td>{{ r.id_prestamo }}</td>
+                <td>{{ r.entidad }}</td>
+                <td>{{ r.nro_cuota }}</td>
+                <td>
+                    {% if r.fecha_vencimiento is not none %}
+                        {{ r.fecha_vencimiento.strftime('%d/%m/%Y') }}
+                    {% endif %}
+                </td>
+                <td>${{ "{:,.2f}".format(r.total).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                <td>{{ r.estado }}</td>
+            </tr>
+            {% endfor %}
+
+        {% else %}
+
+            {% for r in tabla_alertas %}
+            <tr>
+                <td>{{ r.id }}</td>
+                <td>{{ r.entidad }}</td>
+                <td>{{ r.nro_cuota if r.nro_cuota is defined else "" }}</td>
+                <td>{{ r.vencimiento if r.vencimiento is defined else r.fecha_vencimiento }}</td>
+                <td>${{ r.total }}</td>
+                <td>{{ r.estado }}</td>
+            </tr>
+            {% endfor %}
+
+        {% endif %}
+
     </tbody>
 </table>
 
