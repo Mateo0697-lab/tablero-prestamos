@@ -450,7 +450,14 @@ def dashboard():
 
     indicadores = calcular_indicadores()
 
-    return render_template("dashboard.html", **indicadores)
+    metrics = indicadores.copy()
+    metrics["actualizado"] = indicadores.get("ultima_lectura", "")
+
+    return render_template(
+        "dashboard.html",
+        metrics=metrics,
+        **indicadores
+    )
 
 
 @app.route("/cuotas")
