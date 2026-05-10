@@ -73,13 +73,41 @@ def cargar_hoja(nombre_hoja):
     spreadsheet = client.open_by_key(SPREADSHEET_ID)
     ws = spreadsheet.worksheet(nombre_hoja)
 
-    data = ws.get_all_records()
-    df = pd.DataFrame(data)
+    values = ws.get_all_values()
 
-    if df.empty:
-        return df
+    if not values:
+        return pd.DataFrame()
 
-    df = normalize_columns(df)
+    headers = values[0]
+    rows = values[1:]
+
+    clean_headers = []
+    valid_indexes = []
+
+    for i, header in enumerate(headers):
+        header_limpio = normalizar_texto(header)
+
+        if header_limpio != "":
+            clean_headers.append(header_limpio)
+            valid_indexes.append(i)
+
+    clean_rows = []
+
+    for row in rows:
+        clean_row = []
+
+        for i in valid_indexes:
+            if i < len(row):
+                clean_row.append(row[i])
+            else:
+                clean_row.append("")
+
+        clean_rows.append(clean_row)
+
+    df = pd.DataFrame(clean_rows, columns=clean_headers)
+
+    df = df.dropna(how="all")
+
     return df
 
 
