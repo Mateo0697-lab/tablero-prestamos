@@ -65,7 +65,7 @@ def formato_fecha(valor):
 
 def cargar_hoja(nombre_hoja):
     creds = Credentials.from_service_account_file(
-        "credentials/google_service_account.json",
+        "google_service_account.json",
         scopes=SCOPES
     )
 
