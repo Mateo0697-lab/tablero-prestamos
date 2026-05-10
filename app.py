@@ -512,10 +512,30 @@ def cuotas():
 
     entidades = sorted(list(set([c["entidad"] for c in cuotas_lista if c["entidad"]])))
 
+    cuotas_pendientes = len([
+        c for c in cuotas_lista
+        if "pag" not in str(c.get("estado", "")).lower()
+    ])
+
+    cuotas_pagadas = len([
+        c for c in cuotas_lista
+        if "pag" in str(c.get("estado", "")).lower()
+    ])
+
+    total_cuotas = len(cuotas_lista)
+
+    summary = {
+        "cuotas_pendientes": cuotas_pendientes,
+        "cuotas_pagadas": cuotas_pagadas,
+        "total_cuotas": total_cuotas,
+        "entidades": len(entidades)
+    }
+
     return render_template(
         "cuotas.html",
         cuotas=cuotas_lista,
-        entidades=entidades
+        entidades=entidades,
+        summary=summary
     )
 
 
