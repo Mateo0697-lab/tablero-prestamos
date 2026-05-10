@@ -467,10 +467,16 @@ def dashboard():
     metrics = indicadores.copy()
     metrics["actualizado"] = indicadores.get("ultima_lectura", "")
 
+    charts = {
+        "labels": [],
+        "data": []
+    }
+
     return render_template(
         "dashboard.html",
         metrics=metrics,
         vencidas=vencidas,
+        charts=charts,
         **indicadores
     )
 
