@@ -1,14 +1,37 @@
-<div class="table-responsive">
+{% set tabla_alertas = vencidas if vencidas is defined else [] %}
+
+{% if tabla_alertas is defined and tabla_alertas|length > 0 %}
+
 <table class="table table-sm align-middle">
-  <thead><tr><th>ID</th><th>Entidad</th><th>Cuota</th><th>Vencimiento</th><th class="text-end">Total</th></tr></thead>
-  <tbody>
-  {% for _, r in vencidas.iterrows() %}
-  <tr>
-    <td>{{ r.id_prestamo }}</td><td>{{ r.entidad }}</td><td>{{ r.nro_cuota }}</td>
-    <td>{{ r.fecha_vencimiento.strftime('%d/%m/%Y') if r.fecha_vencimiento==r.fecha_vencimiento else '' }}</td>
-    <td class="text-end">{{ money(r.total_pagar) }}</td>
-  </tr>
-  {% else %}<tr><td colspan="5" class="text-muted">Sin registros.</td></tr>{% endfor %}
-  </tbody>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Entidad</th>
+            <th>Cuota</th>
+            <th>Vencimiento</th>
+            <th>Total</th>
+            <th>Estado</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for _, r in tabla_alertas.iterrows() %}
+        <tr>
+            <td>{{ r.id_prestamo }}</td>
+            <td>{{ r.entidad }}</td>
+            <td>{{ r.nro_cuota }}</td>
+            <td>{{ r.fecha_vencimiento.strftime('%d/%m/%Y') if r.fecha_vencimiento is not none else '' }}</td>
+            <td>${{ "{:,.2f}".format(r.total).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+            <td>{{ r.estado }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
 </table>
+
+{% else %}
+
+<div class="text-muted small">
+    No hay registros para mostrar.
 </div>
+
+{% endif %}
