@@ -63,6 +63,23 @@ def formato_fecha(valor):
         return ""
 
 
+def parse_numero(valor):
+    try:
+        if pd.isna(valor) or valor == "":
+            return 0
+
+        valor = str(valor).strip()
+        valor = valor.replace("$", "")
+        valor = valor.replace(" ", "")
+        valor = valor.replace(".", "")
+        valor = valor.replace(",", ".")
+
+        return float(valor)
+
+    except:
+        return 0
+
+
 def cargar_hoja(nombre_hoja):
     creds = Credentials.from_service_account_file(
         "google_service_account.json",
@@ -105,7 +122,6 @@ def cargar_hoja(nombre_hoja):
         clean_rows.append(clean_row)
 
     df = pd.DataFrame(clean_rows, columns=clean_headers)
-
     df = df.dropna(how="all")
 
     return df
@@ -189,7 +205,7 @@ def load_cuotas():
     )
 
     for col in ["capital", "intereses", "iva", "total"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+        df[col] = df[col].apply(parse_numero)
 
     df["estado"] = df["estado"].fillna("Pendiente").astype(str)
 
@@ -227,7 +243,7 @@ def load_prestamos():
     )
 
     for col in ["capital", "tna", "tea", "iva", "plazo"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+        df[col] = df[col].apply(parse_numero)
 
     return df
 
@@ -303,7 +319,29 @@ def calcular_indicadores():
     prestamos = load_prestamos()
 
     if cuotas.empty:
-        return {}
+        return {
+            "fecha_actualizacion": datetime.now().strftime("%d/%m/%Y %H:%M"),
+            "ultima_lectura": datetime.now().strftime("%d/%m/%Y %H:%M"),
+            "total_prestamos": "0",
+            "cuotas_faltantes": "0",
+            "cuotas_pendientes": "0",
+            "cuotas_pagadas": "0",
+            "cuotas_vencidas": "0",
+            "cuota_estimada_mes": "0,00",
+            "bancos_entidades": "0",
+            "entidades_activas": "0",
+            "total_pendiente": "0,00",
+            "capital_pendiente": "0,00",
+            "monto_vencido": "0,00",
+            "tasa_credito": "0,00",
+            "tasa_tna": "0,00",
+            "tasa_tea": "0,00",
+            "total_cuotas_mes": "0,00",
+            "pendiente_mes": "0,00",
+            "fecha_adjudicacion": "",
+            "deuda_por_entidad": [],
+            "proximas": []
+        }
 
     hoy = pd.Timestamp.today().normalize()
     mes_actual = hoy.month
@@ -480,6 +518,7 @@ def dashboard():
         **indicadores
     )
 
+
 @app.route("/cuotas")
 def cuotas():
     if "user" not in session:
@@ -524,11 +563,26 @@ def cuotas():
 
     total_cuotas = len(cuotas_lista)
 
+    total_periodo = sum([
+        parse_numero(str(c.get("total", "0")).replace(".", "").replace(",", "."))
+        for c in cuotas_lista
+    ])
+
+    cuota_promedio = total_periodo / total_cuotas if total_cuotas > 0 else 0
+
+    vencidas_count = len([
+        c for c in cuotas_lista
+        if "venc" in str(c.get("estado", "")).lower()
+    ])
+
     summary = {
         "cuotas_pendientes": cuotas_pendientes,
         "cuotas_pagadas": cuotas_pagadas,
         "total_cuotas": total_cuotas,
-        "entidades": len(entidades)
+        "entidades": len(entidades),
+        "total_periodo": formato_numero(total_periodo),
+        "cuota_promedio": formato_numero(cuota_promedio),
+        "vencidas": vencidas_count
     }
 
     return render_template(
