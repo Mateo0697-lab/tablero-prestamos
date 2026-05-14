@@ -540,23 +540,22 @@ def dashboard():
         charts["estados_labels"] = estados.index.tolist()
         charts["estados_count"] = estados.values.tolist()
 
-        pendientes_flujo = cuotas[
-    cuotas["estado"].astype(str).str.lower().str.strip().isin([
-        "pendiente",
-        "proxima",
-        "próxima",
-        "vencida",
-        "al dia",
-        "al día"
-    ])
-].copy()
+            pendientes_flujo = cuotas[
+        (~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)) &
+        (cuotas["fecha_vencimiento"] >= hoy)
+    ].copy()
 
-pendientes_flujo["mes"] = pendientes_flujo["fecha_vencimiento"].dt.strftime("%m/%Y")
+    pendientes_flujo["mes_orden"] = pendientes_flujo["fecha_vencimiento"].dt.to_period("M")
 
-flujo = pendientes_flujo.groupby("mes")["total"].sum()
+    flujo = (
+        pendientes_flujo
+        .groupby("mes_orden")["total"]
+        .sum()
+        .sort_index()
+    )
 
-charts["meses_labels"] = flujo.index.tolist()
-charts["meses_values"] = flujo.values.tolist()
+    charts["meses_labels"] = [m.strftime("%m/%Y") for m in flujo.index]
+    charts["meses_values"] = flujo.values.tolist()
 
     return render_template(
         "dashboard.html",
