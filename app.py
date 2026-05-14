@@ -504,7 +504,14 @@ def dashboard():
 
     metrics = indicadores.copy()
     metrics["actualizado"] = indicadores.get("ultima_lectura", "")
-
+    metrics["cuota_mes_promedio"] = indicadores.get("cuota_estimada_mes", "0,00")
+    metrics["cuota_mes_cantidad"] = indicadores.get("cuotas_pendientes", "0")
+    metrics["tna_promedio"] = indicadores.get("tasa_tna", "0,00")
+    metrics["tea_promedio"] = indicadores.get("tasa_tea", "0,00")
+    metrics["cuota_mes_total"] = indicadores.get("total_cuotas_mes", "0,00")
+    metrics["cuota_mes_pendiente"] = indicadores.get("pendiente_mes", "0,00")
+    metrics["ultima_adjudicacion"] = indicadores.get("fecha_adjudicacion", "")
+    metrics["adjudicados_mes"] = indicadores.get("total_prestamos", "0") 
     charts = {
         "entidades_labels": [],
         "entidades_values": [],
