@@ -540,9 +540,8 @@ def dashboard():
         charts["estados_labels"] = estados.index.tolist()
         charts["estados_count"] = estados.values.tolist()
 
-        cuotas["mes"] = cuotas["fecha_vencimiento"].dt.strftime("%m/%Y")
-
-        flujo = cuotas.groupby("mes")["total"].sum()
+        abiertas["mes"] = abiertas["fecha_vencimiento"].dt.strftime("%m/%Y")
+        flujo = abiertas.groupby("mes")["total"].sum()
 
         charts["meses_labels"] = flujo.index.tolist()
         charts["meses_values"] = flujo.values.tolist()
