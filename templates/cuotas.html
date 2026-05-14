@@ -5,7 +5,7 @@
   <div>
     <div class="eyebrow">Seguimiento operativo</div>
     <h2 class="fw-bold mb-1">Cuotas de Préstamos</h2>
-    <div class="text-muted">Vista filtrable por estado, entidad e ID.</div>
+    <div class="text-muted">Vista filtrable por fecha, estado, entidad e ID.</div>
   </div>
   <a class="btn btn-primary btn-lg" href="{{ url_for('cuotas') }}">Actualizar</a>
 </div>
@@ -17,32 +17,42 @@
   </div>
 
   <form class="row g-3">
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl-2">
+      <label class="form-label">Desde</label>
+      <input type="date" class="form-control" name="fecha_desde" value="{{ fecha_desde }}">
+    </div>
+
+    <div class="col-sm-6 col-xl-2">
+      <label class="form-label">Hasta</label>
+      <input type="date" class="form-control" name="fecha_hasta" value="{{ fecha_hasta }}">
+    </div>
+
+    <div class="col-sm-6 col-xl-2">
       <label class="form-label">Estado</label>
       <select class="form-select" name="estado">
-        <option value="">Todos los estados</option>
+        <option value="">Todos</option>
         {% for e in ['Pendiente','Pagado','Vencida','Próxima','Al día'] %}
           <option value="{{ e }}" {% if estado==e %}selected{% endif %}>{{ e }}</option>
         {% endfor %}
       </select>
     </div>
 
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl-2">
       <label class="form-label">Entidad</label>
       <select class="form-select" name="entidad">
-        <option value="">Todas las entidades</option>
+        <option value="">Todas</option>
         {% for e in entidades %}
           <option value="{{ e }}" {% if entidad==e %}selected{% endif %}>{{ e }}</option>
         {% endfor %}
       </select>
     </div>
 
-    <div class="col-sm-6 col-xl-4">
+    <div class="col-sm-6 col-xl-3">
       <label class="form-label">Buscar ID / entidad</label>
       <input class="form-control" name="buscar" value="{{ buscar }}" placeholder="Ej. 23430">
     </div>
 
-    <div class="col-xl-2 d-grid align-items-end">
+    <div class="col-xl-1 d-grid align-items-end">
       <button class="btn btn-primary mt-xl-4">Filtrar</button>
     </div>
   </form>

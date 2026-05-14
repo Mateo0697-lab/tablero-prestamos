@@ -574,27 +574,44 @@ def cuotas():
     estado = request.args.get("estado", "")
     entidad = request.args.get("entidad", "")
     buscar = request.args.get("buscar", "")
+    fecha_desde = request.args.get("fecha_desde", "")
+    fecha_hasta = request.args.get("fecha_hasta", "")
 
     if estado:
         cuotas_lista = [
             c for c in cuotas_lista
-            if estado.lower() in str(c["estado"]).lower()
+            if estado.lower() in str(c.get("estado", "")).lower()
         ]
 
     if entidad:
         cuotas_lista = [
             c for c in cuotas_lista
-            if entidad.lower() in str(c["entidad"]).lower()
+            if entidad.lower() in str(c.get("entidad", "")).lower()
         ]
 
     if buscar:
         cuotas_lista = [
             c for c in cuotas_lista
-            if buscar.lower() in str(c["id"]).lower()
-            or buscar.lower() in str(c["entidad"]).lower()
+            if buscar.lower() in str(c.get("id", "")).lower()
+            or buscar.lower() in str(c.get("id_prestamo", "")).lower()
+            or buscar.lower() in str(c.get("entidad", "")).lower()
         ]
 
-    entidades = sorted(list(set([c["entidad"] for c in cuotas_lista if c["entidad"]])))
+    if fecha_desde:
+        fecha_desde_dt = pd.to_datetime(fecha_desde, errors="coerce")
+        cuotas_lista = [
+            c for c in cuotas_lista
+            if pd.to_datetime(c.get("fecha_vencimiento", ""), dayfirst=True, errors="coerce") >= fecha_desde_dt
+        ]
+
+    if fecha_hasta:
+        fecha_hasta_dt = pd.to_datetime(fecha_hasta, errors="coerce")
+        cuotas_lista = [
+            c for c in cuotas_lista
+            if pd.to_datetime(c.get("fecha_vencimiento", ""), dayfirst=True, errors="coerce") <= fecha_hasta_dt
+        ]
+
+    entidades = sorted(list(set([c["entidad"] for c in cuotas_lista if c.get("entidad")])))
 
     cuotas_pendientes = len([
         c for c in cuotas_lista
@@ -609,7 +626,7 @@ def cuotas():
     total_cuotas = len(cuotas_lista)
 
     total_periodo = sum([
-        parse_numero(str(c.get("total", "0")).replace(".", "").replace(",", "."))
+        parse_numero(c.get("total", "0"))
         for c in cuotas_lista
     ])
 
@@ -631,17 +648,16 @@ def cuotas():
     }
 
     return render_template(
-    "cuotas.html",
-    rows=cuotas_lista,
-    entidades=entidades,
-    summary=summary,
-    periodo="",
-    estado=estado,
-    entidad=entidad,
-    buscar=buscar,
-    periodos=[]
-)
-
+        "cuotas.html",
+        rows=cuotas_lista,
+        entidades=entidades,
+        summary=summary,
+        estado=estado,
+        entidad=entidad,
+        buscar=buscar,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta
+    )
 
 @app.route("/usuarios", methods=["GET", "POST"])
 def usuarios():
