@@ -506,9 +506,39 @@ def dashboard():
     metrics["actualizado"] = indicadores.get("ultima_lectura", "")
 
     charts = {
-        "labels": [],
-        "data": []
+        "entidades_labels": [],
+        "entidades_values": [],
+        "estados_labels": [],
+        "estados_count": [],
+        "meses_labels": [],
+        "meses_values": []
     }
+
+    if not cuotas.empty:
+        abiertas = cuotas[
+            ~cuotas["estado"].astype(str).str.lower().str.contains("pag", na=False)
+        ].copy()
+
+        deuda_entidad = (
+            abiertas.groupby("entidad")["total"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+
+        charts["entidades_labels"] = deuda_entidad.index.tolist()
+        charts["entidades_values"] = deuda_entidad.values.tolist()
+
+        estados = cuotas["estado"].value_counts()
+
+        charts["estados_labels"] = estados.index.tolist()
+        charts["estados_count"] = estados.values.tolist()
+
+        cuotas["mes"] = cuotas["fecha_vencimiento"].dt.strftime("%m/%Y")
+
+        flujo = cuotas.groupby("mes")["total"].sum()
+
+        charts["meses_labels"] = flujo.index.tolist()
+        charts["meses_values"] = flujo.values.tolist()
 
     return render_template(
         "dashboard.html",
@@ -517,7 +547,6 @@ def dashboard():
         charts=charts,
         **indicadores
     )
-
 
 @app.route("/cuotas")
 def cuotas():
@@ -586,11 +615,16 @@ def cuotas():
     }
 
     return render_template(
-        "cuotas.html",
-        cuotas=cuotas_lista,
-        entidades=entidades,
-        summary=summary
-    )
+    "cuotas.html",
+    rows=cuotas_lista,
+    entidades=entidades,
+    summary=summary,
+    periodo="",
+    estado=estado,
+    entidad=entidad,
+    buscar=buscar,
+    periodos=[]
+)
 
 
 @app.route("/usuarios", methods=["GET", "POST"])
