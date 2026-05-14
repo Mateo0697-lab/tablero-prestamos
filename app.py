@@ -540,7 +540,7 @@ def dashboard():
         charts["estados_labels"] = estados.index.tolist()
         charts["estados_count"] = estados.values.tolist()
 
-            pendientes_flujo = cuotas[
+    pendientes_flujo = cuotas[
         (~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)) &
         (cuotas["fecha_vencimiento"] >= hoy)
     ].copy()
@@ -556,7 +556,6 @@ def dashboard():
 
     charts["meses_labels"] = [m.strftime("%m/%Y") for m in flujo.index]
     charts["meses_values"] = flujo.values.tolist()
-
     return render_template(
         "dashboard.html",
         metrics=metrics,
