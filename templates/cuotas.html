@@ -7,7 +7,12 @@
     <h2 class="fw-bold mb-1">Cuotas de Préstamos</h2>
     <div class="text-muted">Vista filtrable por fecha, estado, entidad e ID.</div>
   </div>
+  <div class="d-flex gap-2">
+  <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('exportar_cuotas', estado=estado, entidad=entidad, buscar=buscar, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
+    Exportar Excel
+  </a>
   <a class="btn btn-primary btn-lg" href="{{ url_for('cuotas') }}">Actualizar</a>
+</div>
 </div>
 
 <div class="panel mb-4">

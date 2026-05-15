@@ -8,6 +8,8 @@ import json
 import os
 import unicodedata
 from datetime import datetime
+from io import BytesIO
+from flask import send_file
 
 load_dotenv()
 
@@ -699,6 +701,104 @@ def usuarios():
 
     return render_template("usuarios.html", usuarios=usuarios_data)
 
+@app.route("/cuotas/exportar")
+def exportar_cuotas():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    cuotas_lista = preparar_cuotas_tabla()
+
+    estado = request.args.get("estado", "")
+    entidad = request.args.get("entidad", "")
+    buscar = request.args.get("buscar", "")
+    fecha_desde = request.args.get("fecha_desde", "")
+    fecha_hasta = request.args.get("fecha_hasta", "")
+
+    if estado:
+        cuotas_lista = [
+            c for c in cuotas_lista
+            if estado.lower() in str(c.get("estado", "")).lower()
+        ]
+
+    if entidad:
+        cuotas_lista = [
+            c for c in cuotas_lista
+            if entidad.lower() in str(c.get("entidad", "")).lower()
+        ]
+
+    if buscar:
+        cuotas_lista = [
+            c for c in cuotas_lista
+            if buscar.lower() in str(c.get("id", "")).lower()
+            or buscar.lower() in str(c.get("id_prestamo", "")).lower()
+            or buscar.lower() in str(c.get("entidad", "")).lower()
+        ]
+
+    if fecha_desde:
+        fecha_desde_dt = pd.to_datetime(fecha_desde, errors="coerce")
+        cuotas_lista = [
+            c for c in cuotas_lista
+            if pd.to_datetime(c.get("fecha_vencimiento", ""), dayfirst=True, errors="coerce") >= fecha_desde_dt
+        ]
+
+    if fecha_hasta:
+        fecha_hasta_dt = pd.to_datetime(fecha_hasta, errors="coerce")
+        cuotas_lista = [
+            c for c in cuotas_lista
+            if pd.to_datetime(c.get("fecha_vencimiento", ""), dayfirst=True, errors="coerce") <= fecha_hasta_dt
+        ]
+
+    df = pd.DataFrame(cuotas_lista)
+
+    columnas = [
+        "id_prestamo",
+        "entidad",
+        "nro_cuota",
+        "fecha_vencimiento",
+        "estado",
+        "capital",
+        "intereses",
+        "iva",
+        "total",
+        "cuotas_pendientes",
+        "tna",
+        "tea",
+        "fecha_inicio",
+        "tipo_amortizacion"
+    ]
+
+    df = df[[c for c in columnas if c in df.columns]]
+
+    df = df.rename(columns={
+        "id_prestamo": "ID Préstamo",
+        "entidad": "Entidad",
+        "nro_cuota": "Nro Cuota",
+        "fecha_vencimiento": "Fecha Vencimiento",
+        "estado": "Estado",
+        "capital": "Capital",
+        "intereses": "Intereses",
+        "iva": "IVA",
+        "total": "Total",
+        "cuotas_pendientes": "Cuotas Pendientes",
+        "tna": "TNA",
+        "tea": "TEA",
+        "fecha_inicio": "Fecha Toma",
+        "tipo_amortizacion": "Tipo Amortización"
+    })
+
+    output = BytesIO()
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Detalle Cuotas")
+
+    output.seek(0)
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="detalle_cuotas.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)
