@@ -146,5 +146,46 @@
     </table>
   </div>
 </div>
+<script>
+document.querySelectorAll(".cuotas-table th").forEach((th, index) => {
+  th.style.cursor = "pointer";
+
+  th.addEventListener("click", () => {
+    const table = th.closest("table");
+    const tbody = table.querySelector("tbody");
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const asc = th.dataset.asc !== "true";
+
+    rows.sort((a, b) => {
+      let A = a.children[index].innerText.trim();
+      let B = b.children[index].innerText.trim();
+
+      const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+
+      if (dateRegex.test(A) && dateRegex.test(B)) {
+        const [da, ma, ya] = A.split("/").map(Number);
+        const [db, mb, yb] = B.split("/").map(Number);
+        A = new Date(ya, ma - 1, da);
+        B = new Date(yb, mb - 1, db);
+        return asc ? A - B : B - A;
+      }
+
+      const numA = parseFloat(A.replace(/\$/g, "").replace(/\./g, "").replace(",", "."));
+      const numB = parseFloat(B.replace(/\$/g, "").replace(/\./g, "").replace(",", "."));
+
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return asc ? numA - numB : numB - numA;
+      }
+
+      return asc ? A.localeCompare(B) : B.localeCompare(A);
+    });
+
+    th.dataset.asc = asc;
+
+    tbody.innerHTML = "";
+    rows.forEach(row => tbody.appendChild(row));
+  });
+});
+</script>
 
 {% endblock %}
