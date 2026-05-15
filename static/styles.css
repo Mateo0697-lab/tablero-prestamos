@@ -320,3 +320,30 @@ background:#eef4f9;
 color:#0b2d4d;
 border-color:#c6d4e5
 }
+
+.state-pagado {
+    background: #198754;
+    color: #fff;
+}
+
+.state-pendiente {
+    background: #0d6efd;
+    color: #fff;
+}
+
+.state-vencida {
+    background: #dc3545;
+    color: #fff;
+}
+
+.state-proxima,
+.state-próxima {
+    background: #ffc107;
+    color: #000;
+}
+
+.state-al-dia,
+.state-al-día {
+    background: #20c997;
+    color: #fff;
+}
