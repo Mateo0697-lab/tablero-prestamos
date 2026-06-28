@@ -523,6 +523,8 @@ def dashboard():
         "meses_values": []
     }
 
+    capital_por_entidad = []
+
     if not cuotas.empty:
         abiertas = cuotas[
             ~cuotas["estado"].astype(str).str.lower().str.contains("pag", na=False)
@@ -536,6 +538,20 @@ def dashboard():
 
         charts["entidades_labels"] = deuda_entidad.index.tolist()
         charts["entidades_values"] = deuda_entidad.values.tolist()
+
+        capital_entidad = (
+            abiertas.groupby("entidad")["capital"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+
+        capital_por_entidad = [
+            {
+                "entidad": entidad,
+                "capital": formato_numero(capital)
+            }
+            for entidad, capital in capital_entidad.items()
+        ]
 
         estados = cuotas["estado"].value_counts()
 
@@ -563,6 +579,7 @@ def dashboard():
         metrics=metrics,
         vencidas=vencidas,
         charts=charts,
+        capital_por_entidad=capital_por_entidad,
         **indicadores
     )
 

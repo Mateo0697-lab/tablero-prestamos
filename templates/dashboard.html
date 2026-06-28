@@ -3,6 +3,7 @@
 <div class="hero mb-4">
   <div>
     <div class="eyebrow">Seguimiento financiero</div>
+
     <h2 class="fw-bold mb-1">Tablero de Préstamos</h2>
     <div class="text-muted">Indicadores calculados desde la hoja <strong>Cuotas</strong>. Última lectura: <strong>{{ metrics.actualizado }}</strong></div>
   </div>
@@ -35,6 +36,34 @@
 <div class="row g-4 mb-4">
   <div class="col-12 col-lg-7"><div class="panel"><h5>Deuda pendiente por entidad</h5><canvas id="entidades"></canvas></div></div>
   <div class="col-12 col-lg-5"><div class="panel"><h5>Estado de cuotas</h5><canvas id="estados"></canvas></div></div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-12 col-lg-12">
+    <div class="panel">
+      <h5>Capital pendiente por entidad</h5>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Entidad</th>
+              <th class="text-end">Capital pendiente</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in capital_por_entidad %}
+            <tr>
+              <td>{{ item.entidad }}</td>
+              <td class="text-end fw-semibold">{{ item.capital }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
 </div>
 
 <div class="row g-4 mb-4">
