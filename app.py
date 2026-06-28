@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import pandas as pd
@@ -9,7 +9,6 @@ import os
 import unicodedata
 from datetime import datetime
 from io import BytesIO
-from flask import send_file
 
 load_dotenv()
 
@@ -17,7 +16,6 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "tablero-prestamos-local")
 
 USERS_FILE = "users.json"
-
 SPREADSHEET_ID = "177cRLYfGVEi0d67FB68xashEOB_hXR-tIxsl6EiIPA8"
 
 SCOPES = [
@@ -35,11 +33,6 @@ def normalizar_texto(valor):
     valor = valor.replace("/", "_")
     valor = valor.replace("-", "_")
     return valor
-
-
-def normalize_columns(df):
-    df.columns = [normalizar_texto(c) for c in df.columns]
-    return df
 
 
 def formato_numero(valor):
@@ -77,7 +70,6 @@ def parse_numero(valor):
         valor = valor.replace(",", ".")
 
         return float(valor)
-
     except:
         return 0
 
@@ -105,7 +97,6 @@ def cargar_hoja(nombre_hoja):
 
     for i, header in enumerate(headers):
         header_limpio = normalizar_texto(header)
-
         if header_limpio != "":
             clean_headers.append(header_limpio)
             valid_indexes.append(i)
@@ -114,13 +105,8 @@ def cargar_hoja(nombre_hoja):
 
     for row in rows:
         clean_row = []
-
         for i in valid_indexes:
-            if i < len(row):
-                clean_row.append(row[i])
-            else:
-                clean_row.append("")
-
+            clean_row.append(row[i] if i < len(row) else "")
         clean_rows.append(clean_row)
 
     df = pd.DataFrame(clean_rows, columns=clean_headers)
@@ -263,9 +249,11 @@ def preparar_cuotas_tabla():
             "fecha_inicio",
             "tna",
             "tea",
-            "tipo_amortizacion"
+            "tipo_amortizacion",
+            "plazo"
         ]
 
+        columnas_merge = [c for c in columnas_merge if c in prestamos.columns]
         prestamos_merge = prestamos[columnas_merge].drop_duplicates("id_prestamo")
 
         cuotas = cuotas.merge(
@@ -275,7 +263,7 @@ def preparar_cuotas_tabla():
         )
 
     cuotas_pendientes_por_id = cuotas[
-        ~cuotas["estado"].str.lower().str.contains("pag", na=False)
+        ~cuotas["estado"].str.lower().str.contains("pag|cancel", na=False)
     ].groupby("id_prestamo").size().to_dict()
 
     resultado = []
@@ -285,7 +273,9 @@ def preparar_cuotas_tabla():
         estado_lower = estado.lower()
 
         if "pag" in estado_lower:
-            estado_color = "pagada"
+            estado_color = "pagado"
+        elif "cancel" in estado_lower:
+            estado_color = "cancelado"
         elif "venc" in estado_lower:
             estado_color = "vencida"
         else:
@@ -310,7 +300,8 @@ def preparar_cuotas_tabla():
             "tea": formato_numero(row.get("tea", 0)),
             "fecha_toma": formato_fecha(row.get("fecha_inicio", "")),
             "fecha_inicio": formato_fecha(row.get("fecha_inicio", "")),
-            "tipo_amortizacion": row.get("tipo_amortizacion", "")
+            "tipo_amortizacion": row.get("tipo_amortizacion", ""),
+            "plazo": row.get("plazo", "")
         })
 
     return resultado
@@ -320,30 +311,32 @@ def calcular_indicadores():
     cuotas = load_cuotas()
     prestamos = load_prestamos()
 
+    base_vacia = {
+        "fecha_actualizacion": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "ultima_lectura": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "total_prestamos": "0",
+        "cuotas_faltantes": "0",
+        "cuotas_pendientes": "0",
+        "cuotas_pagadas": "0",
+        "cuotas_vencidas": "0",
+        "cuota_estimada_mes": "0,00",
+        "bancos_entidades": "0",
+        "entidades_activas": "0",
+        "total_pendiente": "0,00",
+        "capital_pendiente": "0,00",
+        "monto_vencido": "0,00",
+        "tasa_credito": "0,00",
+        "tasa_tna": "0,00",
+        "tasa_tea": "0,00",
+        "total_cuotas_mes": "0,00",
+        "pendiente_mes": "0,00",
+        "fecha_adjudicacion": "",
+        "deuda_por_entidad": [],
+        "proximas": []
+    }
+
     if cuotas.empty:
-        return {
-            "fecha_actualizacion": datetime.now().strftime("%d/%m/%Y %H:%M"),
-            "ultima_lectura": datetime.now().strftime("%d/%m/%Y %H:%M"),
-            "total_prestamos": "0",
-            "cuotas_faltantes": "0",
-            "cuotas_pendientes": "0",
-            "cuotas_pagadas": "0",
-            "cuotas_vencidas": "0",
-            "cuota_estimada_mes": "0,00",
-            "bancos_entidades": "0",
-            "entidades_activas": "0",
-            "total_pendiente": "0,00",
-            "capital_pendiente": "0,00",
-            "monto_vencido": "0,00",
-            "tasa_credito": "0,00",
-            "tasa_tna": "0,00",
-            "tasa_tea": "0,00",
-            "total_cuotas_mes": "0,00",
-            "pendiente_mes": "0,00",
-            "fecha_adjudicacion": "",
-            "deuda_por_entidad": [],
-            "proximas": []
-        }
+        return base_vacia
 
     hoy = pd.Timestamp.today().normalize()
     mes_actual = hoy.month
@@ -354,7 +347,7 @@ def calcular_indicadores():
     ]
 
     cuotas_abiertas_df = cuotas[
-        ~cuotas["estado"].str.lower().str.contains("pag", na=False)
+        ~cuotas["estado"].str.lower().str.contains("pag|cancel", na=False)
     ]
 
     cuotas_vencidas_df = cuotas_abiertas_df[
@@ -372,11 +365,10 @@ def calcular_indicadores():
     total_mes = cuotas_mes_df["total"].sum()
 
     pendiente_mes = cuotas_mes_df[
-        ~cuotas_mes_df["estado"].str.lower().str.contains("pag", na=False)
+        ~cuotas_mes_df["estado"].str.lower().str.contains("pag|cancel", na=False)
     ]["total"].sum()
 
     cuota_promedio_mes = cuotas_mes_df["total"].mean() if len(cuotas_mes_df) > 0 else 0
-
     entidades_activas = cuotas_abiertas_df["entidad"].nunique()
 
     tasa_tna = 0
@@ -407,7 +399,9 @@ def calcular_indicadores():
         for _, row in deuda_entidad.iterrows()
     ]
 
-    proximas_df = cuotas_abiertas_df.sort_values("fecha_vencimiento").head(10)
+    proximas_df = cuotas_abiertas_df[
+        cuotas_abiertas_df["fecha_vencimiento"] >= hoy
+    ].sort_values("fecha_vencimiento").head(10)
 
     proximas = []
 
@@ -415,7 +409,9 @@ def calcular_indicadores():
         proximas.append({
             "id": row.get("id_prestamo", ""),
             "entidad": row.get("entidad", ""),
+            "nro_cuota": row.get("nro_cuota", ""),
             "vencimiento": formato_fecha(row.get("fecha_vencimiento", "")),
+            "fecha_vencimiento": formato_fecha(row.get("fecha_vencimiento", "")),
             "total": formato_numero(row.get("total", 0)),
             "estado": row.get("estado", "Pendiente"),
             "estado_color": "pendiente"
@@ -490,14 +486,13 @@ def dashboard():
 
     indicadores = calcular_indicadores()
     cuotas = load_cuotas()
-
     hoy = pd.Timestamp.today().normalize()
 
     if cuotas.empty:
         vencidas = pd.DataFrame()
     else:
         abiertas = cuotas[
-            ~cuotas["estado"].astype(str).str.lower().str.contains("pag", na=False)
+            ~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)
         ].copy()
 
         vencidas = abiertas[
@@ -513,7 +508,8 @@ def dashboard():
     metrics["cuota_mes_total"] = indicadores.get("total_cuotas_mes", "0,00")
     metrics["cuota_mes_pendiente"] = indicadores.get("pendiente_mes", "0,00")
     metrics["ultima_adjudicacion"] = indicadores.get("fecha_adjudicacion", "")
-    metrics["adjudicados_mes"] = indicadores.get("total_prestamos", "0") 
+    metrics["adjudicados_mes"] = indicadores.get("total_prestamos", "0")
+
     charts = {
         "entidades_labels": [],
         "entidades_values": [],
@@ -527,7 +523,7 @@ def dashboard():
 
     if not cuotas.empty:
         abiertas = cuotas[
-            ~cuotas["estado"].astype(str).str.lower().str.contains("pag", na=False)
+            ~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)
         ].copy()
 
         deuda_entidad = (
@@ -558,22 +554,23 @@ def dashboard():
         charts["estados_labels"] = estados.index.tolist()
         charts["estados_count"] = estados.values.tolist()
 
-    pendientes_flujo = cuotas[
-        (~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)) &
-        (cuotas["fecha_vencimiento"] >= hoy)
-    ].copy()
+        pendientes_flujo = cuotas[
+            (~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)) &
+            (cuotas["fecha_vencimiento"] >= hoy)
+        ].copy()
 
-    pendientes_flujo["mes_orden"] = pendientes_flujo["fecha_vencimiento"].dt.to_period("M")
+        pendientes_flujo["mes_orden"] = pendientes_flujo["fecha_vencimiento"].dt.to_period("M")
 
-    flujo = (
-        pendientes_flujo
-        .groupby("mes_orden")["total"]
-        .sum()
-        .sort_index()
-    )
+        flujo = (
+            pendientes_flujo
+            .groupby("mes_orden")["total"]
+            .sum()
+            .sort_index()
+        )
 
-    charts["meses_labels"] = [m.strftime("%m/%Y") for m in flujo.index]
-    charts["meses_values"] = flujo.values.tolist()
+        charts["meses_labels"] = [m.strftime("%m/%Y") for m in flujo.index]
+        charts["meses_values"] = flujo.values.tolist()
+
     return render_template(
         "dashboard.html",
         metrics=metrics,
@@ -582,6 +579,7 @@ def dashboard():
         capital_por_entidad=capital_por_entidad,
         **indicadores
     )
+
 
 @app.route("/cuotas")
 def cuotas():
@@ -678,6 +676,50 @@ def cuotas():
         fecha_hasta=fecha_hasta
     )
 
+
+@app.route("/cuotas/exportar")
+def exportar_cuotas():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    cuotas_lista = preparar_cuotas_tabla()
+
+    df = pd.DataFrame(cuotas_lista)
+
+    columnas = [
+        "id_prestamo",
+        "entidad",
+        "nro_cuota",
+        "fecha_vencimiento",
+        "estado",
+        "capital",
+        "intereses",
+        "iva",
+        "total",
+        "cuotas_pendientes",
+        "tna",
+        "tea",
+        "fecha_inicio",
+        "tipo_amortizacion"
+    ]
+
+    df = df[[c for c in columnas if c in df.columns]]
+
+    output = BytesIO()
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Detalle Cuotas")
+
+    output.seek(0)
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="detalle_cuotas.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
 @app.route("/usuarios", methods=["GET", "POST"])
 def usuarios():
     if "user" not in session:
@@ -711,111 +753,12 @@ def usuarios():
         })
 
         guardar_usuarios(usuarios_data)
-
         flash("Usuario creado correctamente.", "success")
 
         return redirect(url_for("usuarios"))
 
     return render_template("usuarios.html", usuarios=usuarios_data)
 
-@app.route("/cuotas/exportar")
-def exportar_cuotas():
-    if "user" not in session:
-        return redirect(url_for("login"))
-
-    cuotas_lista = preparar_cuotas_tabla()
-
-    estado = request.args.get("estado", "")
-    entidad = request.args.get("entidad", "")
-    buscar = request.args.get("buscar", "")
-    fecha_desde = request.args.get("fecha_desde", "")
-    fecha_hasta = request.args.get("fecha_hasta", "")
-
-    if estado:
-        cuotas_lista = [
-            c for c in cuotas_lista
-            if estado.lower() in str(c.get("estado", "")).lower()
-        ]
-
-    if entidad:
-        cuotas_lista = [
-            c for c in cuotas_lista
-            if entidad.lower() in str(c.get("entidad", "")).lower()
-        ]
-
-    if buscar:
-        cuotas_lista = [
-            c for c in cuotas_lista
-            if buscar.lower() in str(c.get("id", "")).lower()
-            or buscar.lower() in str(c.get("id_prestamo", "")).lower()
-            or buscar.lower() in str(c.get("entidad", "")).lower()
-        ]
-
-    if fecha_desde:
-        fecha_desde_dt = pd.to_datetime(fecha_desde, errors="coerce")
-        cuotas_lista = [
-            c for c in cuotas_lista
-            if pd.to_datetime(c.get("fecha_vencimiento", ""), dayfirst=True, errors="coerce") >= fecha_desde_dt
-        ]
-
-    if fecha_hasta:
-        fecha_hasta_dt = pd.to_datetime(fecha_hasta, errors="coerce")
-        cuotas_lista = [
-            c for c in cuotas_lista
-            if pd.to_datetime(c.get("fecha_vencimiento", ""), dayfirst=True, errors="coerce") <= fecha_hasta_dt
-        ]
-
-    df = pd.DataFrame(cuotas_lista)
-
-    columnas = [
-        "id_prestamo",
-        "entidad",
-        "nro_cuota",
-        "fecha_vencimiento",
-        "estado",
-        "capital",
-        "intereses",
-        "iva",
-        "total",
-        "cuotas_pendientes",
-        "tna",
-        "tea",
-        "fecha_inicio",
-        "tipo_amortizacion"
-    ]
-
-    df = df[[c for c in columnas if c in df.columns]]
-
-    df = df.rename(columns={
-        "id_prestamo": "ID Préstamo",
-        "entidad": "Entidad",
-        "nro_cuota": "Nro Cuota",
-        "fecha_vencimiento": "Fecha Vencimiento",
-        "estado": "Estado",
-        "capital": "Capital",
-        "intereses": "Intereses",
-        "iva": "IVA",
-        "total": "Total",
-        "cuotas_pendientes": "Cuotas Pendientes",
-        "tna": "TNA",
-        "tea": "TEA",
-        "fecha_inicio": "Fecha Toma",
-        "tipo_amortizacion": "Tipo Amortización"
-    })
-
-    output = BytesIO()
-
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="Detalle Cuotas")
-
-    output.seek(0)
-
-    return send_file(
-        output,
-        as_attachment=True,
-        download_name="detalle_cuotas.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -7,12 +7,11 @@
     <h2 class="fw-bold mb-1">Cuotas de Préstamos</h2>
     <div class="text-muted">Vista filtrable por fecha, estado, entidad e ID.</div>
   </div>
+
   <div class="d-flex gap-2">
-  <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('exportar_cuotas', estado=estado, entidad=entidad, buscar=buscar, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
-    Exportar Excel
-  </a>
-  <a class="btn btn-primary btn-lg" href="{{ url_for('cuotas') }}">Actualizar</a>
-</div>
+    <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('exportar_cuotas') }}">Exportar Excel</a>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('cuotas') }}">Actualizar</a>
+  </div>
 </div>
 
 <div class="panel mb-4">
@@ -36,7 +35,7 @@
       <label class="form-label">Estado</label>
       <select class="form-select" name="estado">
         <option value="">Todos</option>
-        {% for e in ['Pendiente','Pagado','Vencida','Próxima','Al día'] %}
+        {% for e in ['Pendiente','Pagado','Vencida','Próxima','Al día','Cancelado'] %}
           <option value="{{ e }}" {% if estado==e %}selected{% endif %}>{{ e }}</option>
         {% endfor %}
       </select>
@@ -151,6 +150,7 @@
     </table>
   </div>
 </div>
+
 <script>
 document.querySelectorAll(".cuotas-table th").forEach((th, index) => {
   th.style.cursor = "pointer";
@@ -186,7 +186,6 @@ document.querySelectorAll(".cuotas-table th").forEach((th, index) => {
     });
 
     th.dataset.asc = asc;
-
     tbody.innerHTML = "";
     rows.forEach(row => tbody.appendChild(row));
   });

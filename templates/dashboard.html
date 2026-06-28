@@ -1,45 +1,134 @@
 {% extends 'base.html' %}
 {% block content %}
+
 <div class="hero mb-4">
   <div>
     <div class="eyebrow">Seguimiento financiero</div>
-
     <h2 class="fw-bold mb-1">Tablero de Préstamos</h2>
-    <div class="text-muted">Indicadores calculados desde la hoja <strong>Cuotas</strong>. Última lectura: <strong>{{ metrics.actualizado }}</strong></div>
+    <div class="text-muted">
+      Indicadores calculados desde la hoja <strong>Cuotas</strong>.
+      Última lectura: <strong>{{ metrics.actualizado }}</strong>
+    </div>
   </div>
-  <a class="btn btn-primary btn-lg" href="{{ url_for('dashboard') }}">Actualizar desde Excel</a>
+  <a class="btn btn-primary btn-lg" href="{{ url_for('dashboard') }}">Actualizar</a>
 </div>
+
 {% if error %}
-  <div class="alert alert-danger"><strong>Error leyendo Excel:</strong> {{ error }}</div>
+  <div class="alert alert-danger">
+    <strong>Error leyendo datos:</strong> {{ error }}
+  </div>
 {% else %}
 
 <div class="row g-3 mb-4">
-  <div class="col-12 col-sm-6 col-xl-3"><div class="kpi kpi-main"><span>Cuotas faltantes</span><strong>{{ metrics.cuotas_faltantes }}</strong><small>Pendientes, próximas o vencidas</small></div></div>
-  <div class="col-12 col-sm-6 col-xl-3"><div class="kpi success"><span>Cuotas pagadas</span><strong>{{ metrics.cuotas_pagadas }}</strong><small>Canceladas según estado</small></div></div>
-  <div class="col-12 col-sm-6 col-xl-3"><div class="kpi warning"><span>Cuota estimada del mes</span><strong>{{ metrics.cuota_mes_promedio }}</strong><small>Promedio mensual · {{ metrics.cuota_mes_cantidad }} cuotas</small></div></div>
-  <div class="col-12 col-sm-6 col-xl-3"><div class="kpi"><span>Banco / entidad</span><strong>{{ metrics.entidades_activas }}</strong><small>Entidades con deuda vigente</small></div></div>
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi kpi-main">
+      <span>Cuotas faltantes</span>
+      <strong>{{ metrics.cuotas_faltantes }}</strong>
+      <small>Pendientes, próximas o vencidas</small>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi success">
+      <span>Cuotas pagadas</span>
+      <strong>{{ metrics.cuotas_pagadas }}</strong>
+      <small>Canceladas según estado</small>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi warning">
+      <span>Cuota estimada del mes</span>
+      <strong>{{ metrics.cuota_mes_promedio }}</strong>
+      <small>Promedio mensual · {{ metrics.cuota_mes_cantidad }} cuotas</small>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi">
+      <span>Banco / entidad</span>
+      <strong>{{ metrics.entidades_activas }}</strong>
+      <small>Entidades con deuda vigente</small>
+    </div>
+  </div>
 </div>
 
 <div class="row g-3 mb-4">
-  <div class="col-12 col-sm-6 col-xl-3"><div class="kpi"><span>Total pendiente</span><strong>{{ metrics.total_pendiente }}</strong><small>Capital + intereses + IVA</small></div></div>
-  <div class="col-12 col-sm-6 col-xl-3"><div class="kpi"><span>Capital pendiente</span><strong>{{ metrics.capital_pendiente }}</strong><small>Saldo de capital de cuotas abiertas</small></div></div>
-  <div class="col-12 col-sm-6 col-xl-3"><div class="kpi danger"><span>Monto vencido</span><strong>{{ metrics.monto_vencido }}</strong><small>{{ metrics.cuotas_vencidas }} cuotas vencidas</small></div></div>
-  <div class="col-12 col-sm-6 col-xl-3"><div class="kpi"><span>Tasa del crédito</span><strong>{{ metrics.tna_promedio }}</strong><small>TNA promedio ponderada · TEA {{ metrics.tea_promedio }}</small></div></div>
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi">
+      <span>Total pendiente</span>
+      <strong>{{ metrics.total_pendiente }}</strong>
+      <small>Capital + intereses + IVA</small>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi">
+      <span>Capital pendiente</span>
+      <strong>{{ metrics.capital_pendiente }}</strong>
+      <small>Saldo de capital de cuotas abiertas</small>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi danger">
+      <span>Monto vencido</span>
+      <strong>{{ metrics.monto_vencido }}</strong>
+      <small>{{ metrics.cuotas_vencidas }} cuotas vencidas</small>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi">
+      <span>Tasa del crédito</span>
+      <strong>{{ metrics.tna_promedio }}</strong>
+      <small>TNA promedio · TEA {{ metrics.tea_promedio }}</small>
+    </div>
+  </div>
 </div>
 
 <div class="row g-3 mb-4">
-  <div class="col-12 col-md-4"><div class="mini-card"><span>Total cuotas del mes</span><strong>{{ metrics.cuota_mes_total }}</strong></div></div>
-  <div class="col-12 col-md-4"><div class="mini-card"><span>Pendiente del mes</span><strong>{{ metrics.cuota_mes_pendiente }}</strong></div></div>
-  <div class="col-12 col-md-4"><div class="mini-card"><span>Fecha de adjudicación</span><strong>{{ metrics.ultima_adjudicacion }}</strong><small>{{ metrics.adjudicados_mes }} préstamos adjudicados este mes</small></div></div>
+  <div class="col-12 col-md-4">
+    <div class="mini-card">
+      <span>Total cuotas del mes</span>
+      <strong>{{ metrics.cuota_mes_total }}</strong>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-4">
+    <div class="mini-card">
+      <span>Pendiente del mes</span>
+      <strong>{{ metrics.cuota_mes_pendiente }}</strong>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-4">
+    <div class="mini-card">
+      <span>Fecha de adjudicación</span>
+      <strong>{{ metrics.ultima_adjudicacion }}</strong>
+      <small>{{ metrics.adjudicados_mes }} préstamos adjudicados</small>
+    </div>
+  </div>
 </div>
 
 <div class="row g-4 mb-4">
-  <div class="col-12 col-lg-7"><div class="panel"><h5>Deuda pendiente por entidad</h5><canvas id="entidades"></canvas></div></div>
-  <div class="col-12 col-lg-5"><div class="panel"><h5>Estado de cuotas</h5><canvas id="estados"></canvas></div></div>
+  <div class="col-12 col-lg-7">
+    <div class="panel">
+      <h5>Deuda pendiente por entidad</h5>
+      <canvas id="entidades"></canvas>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-5">
+    <div class="panel">
+      <h5>Estado de cuotas</h5>
+      <canvas id="estados"></canvas>
+    </div>
+  </div>
 </div>
 
 <div class="row g-4 mb-4">
-  <div class="col-12 col-lg-12">
+  <div class="col-12">
     <div class="panel">
       <h5>Capital pendiente por entidad</h5>
 
@@ -67,39 +156,108 @@
 </div>
 
 <div class="row g-4 mb-4">
-  <div class="col-12 col-lg-12"><div class="panel"><h5>Flujo proyectado por mes de vencimiento</h5><canvas id="meses"></canvas></div></div>
+  <div class="col-12">
+    <div class="panel">
+      <h5>Flujo proyectado por mes de vencimiento</h5>
+      <canvas id="meses"></canvas>
+    </div>
+  </div>
 </div>
 
 <div class="row g-4">
-  <div class="col-lg-6">
-    <div class="panel"><div class="panel-title-danger">Cuotas vencidas</div>{% include '_tabla_alertas.html' with context %}</div>
+  <div class="col-12 col-lg-6">
+    <div class="panel">
+      <div class="panel-title-danger">Cuotas vencidas</div>
+      {% include '_tabla_alertas.html' with context %}
+    </div>
   </div>
-  <div class="col-lg-6">
-    <div class="panel"><div class="panel-title-warning">Próximos vencimientos</div>{% set vencidas = proximas %}{% include '_tabla_alertas.html' with context %}</div>
+
+  <div class="col-12 col-lg-6">
+    <div class="panel">
+      <div class="panel-title-warning">Próximos vencimientos</div>
+      {% set vencidas = proximas %}
+      {% include '_tabla_alertas.html' with context %}
+    </div>
   </div>
 </div>
 
 <script>
-const chartData = {{ charts|default({"labels": [], "data": []}, true)|tojson }};
-const fmt = (v) => new Intl.NumberFormat('es-AR', {style:'currency', currency:'ARS', maximumFractionDigits:0}).format(v);
+const chartData = {{ charts|default({
+  "entidades_labels": [],
+  "entidades_values": [],
+  "estados_labels": [],
+  "estados_count": [],
+  "meses_labels": [],
+  "meses_values": []
+}, true)|tojson }};
+
+const fmt = (v) => new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  maximumFractionDigits: 0
+}).format(v || 0);
 
 new Chart(document.getElementById('entidades'), {
-  type:'bar',
-  data:{labels:chartData.entidades_labels, datasets:[{label:'Total pendiente', data:chartData.entidades_values, borderRadius:8}]},
-  options:{indexAxis:'y', responsive:true, plugins:{legend:{display:false}, tooltip:{callbacks:{label:(c)=>fmt(c.raw)}}}, scales:{x:{ticks:{callback:(v)=>fmt(v)}}}}
+  type: 'bar',
+  data: {
+    labels: chartData.entidades_labels,
+    datasets: [{
+      label: 'Total pendiente',
+      data: chartData.entidades_values,
+      borderRadius: 8
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: (c) => fmt(c.raw) } }
+    },
+    scales: {
+      x: { ticks: { callback: (v) => fmt(v) } }
+    }
+  }
 });
 
 new Chart(document.getElementById('estados'), {
-  type:'doughnut',
-  data:{labels:chartData.estados_labels, datasets:[{data:chartData.estados_count}]},
-  options:{responsive:true, plugins:{legend:{position:'bottom'}}}
+  type: 'doughnut',
+  data: {
+    labels: chartData.estados_labels,
+    datasets: [{
+      data: chartData.estados_count
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom' }
+    }
+  }
 });
 
 new Chart(document.getElementById('meses'), {
-  type:'line',
-  data:{labels:chartData.meses_labels, datasets:[{label:'Total a pagar', data:chartData.meses_values, tension:.25, fill:true}]},
-  options:{responsive:true, plugins:{tooltip:{callbacks:{label:(c)=>fmt(c.raw)}}}, scales:{y:{ticks:{callback:(v)=>fmt(v)}}}}
+  type: 'line',
+  data: {
+    labels: chartData.meses_labels,
+    datasets: [{
+      label: 'Total a pagar pendiente',
+      data: chartData.meses_values,
+      tension: .25,
+      fill: true
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      tooltip: { callbacks: { label: (c) => fmt(c.raw) } }
+    },
+    scales: {
+      y: { ticks: { callback: (v) => fmt(v) } }
+    }
+  }
 });
 </script>
+
 {% endif %}
 {% endblock %}
