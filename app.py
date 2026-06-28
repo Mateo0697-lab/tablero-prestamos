@@ -520,6 +520,7 @@ def dashboard():
     }
 
     capital_por_entidad = []
+    capital_corriente_no_corriente = []
 
     if not cuotas.empty:
         abiertas = cuotas[
@@ -549,6 +550,34 @@ def dashboard():
             for entidad, capital in capital_entidad.items()
         ]
 
+        fecha_corte_corriente = hoy + pd.DateOffset(months=12)
+
+        abiertas["clasificacion"] = abiertas["fecha_vencimiento"].apply(
+            lambda x: "Corriente" if pd.notna(x) and x <= fecha_corte_corriente else "No corriente"
+        )
+
+        capital_clasificado = (
+            abiertas
+            .groupby(["entidad", "clasificacion"])["capital"]
+            .sum()
+            .unstack(fill_value=0)
+        )
+
+        capital_clasificado["Total"] = capital_clasificado.sum(axis=1)
+        capital_clasificado = capital_clasificado.sort_values("Total", ascending=False)
+
+        for entidad, row in capital_clasificado.iterrows():
+            corriente = row.get("Corriente", 0)
+            no_corriente = row.get("No corriente", 0)
+            total = row.get("Total", 0)
+
+            capital_corriente_no_corriente.append({
+                "entidad": entidad,
+                "corriente": formato_numero(corriente),
+                "no_corriente": formato_numero(no_corriente),
+                "total": formato_numero(total)
+            })
+
         estados = cuotas["estado"].value_counts()
 
         charts["estados_labels"] = estados.index.tolist()
@@ -577,9 +606,9 @@ def dashboard():
         vencidas=vencidas,
         charts=charts,
         capital_por_entidad=capital_por_entidad,
+        capital_corriente_no_corriente=capital_corriente_no_corriente,
         **indicadores
     )
-
 
 @app.route("/cuotas")
 def cuotas():

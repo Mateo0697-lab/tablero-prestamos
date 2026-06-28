@@ -158,6 +158,38 @@
 <div class="row g-4 mb-4">
   <div class="col-12">
     <div class="panel">
+      <h5>Capital pendiente corriente y no corriente por entidad</h5>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Entidad</th>
+              <th class="text-end">Capital corriente</th>
+              <th class="text-end">Capital no corriente</th>
+              <th class="text-end">Total capital</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in capital_corriente_no_corriente %}
+            <tr>
+              <td>{{ item.entidad }}</td>
+              <td class="text-end">{{ item.corriente }}</td>
+              <td class="text-end">{{ item.no_corriente }}</td>
+              <td class="text-end fw-semibold">{{ item.total }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-12">
+    <div class="panel">
       <h5>Flujo proyectado por mes de vencimiento</h5>
       <canvas id="meses"></canvas>
     </div>
