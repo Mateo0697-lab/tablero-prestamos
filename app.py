@@ -523,6 +523,14 @@ def dashboard():
     capital_corriente_no_corriente = []
     top_proximos_vencimientos = []
 
+    totales_corriente_no_corriente = {
+        "corriente": "0,00",
+        "no_corriente": "0,00",
+        "total": "0,00",
+        "pct_corriente": "0,00%",
+        "pct_no_corriente": "0,00%"
+    }
+
     if not cuotas.empty:
         abiertas = cuotas[
             ~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)
@@ -567,16 +575,36 @@ def dashboard():
         capital_clasificado["Total"] = capital_clasificado.sum(axis=1)
         capital_clasificado = capital_clasificado.sort_values("Total", ascending=False)
 
+        total_corriente_general = capital_clasificado["Corriente"].sum() if "Corriente" in capital_clasificado.columns else 0
+        total_no_corriente_general = capital_clasificado["No corriente"].sum() if "No corriente" in capital_clasificado.columns else 0
+        total_capital_general = total_corriente_general + total_no_corriente_general
+
+        pct_corriente_general = (total_corriente_general / total_capital_general * 100) if total_capital_general else 0
+        pct_no_corriente_general = (total_no_corriente_general / total_capital_general * 100) if total_capital_general else 0
+
+        totales_corriente_no_corriente = {
+            "corriente": formato_numero(total_corriente_general),
+            "no_corriente": formato_numero(total_no_corriente_general),
+            "total": formato_numero(total_capital_general),
+            "pct_corriente": f"{pct_corriente_general:.2f}%".replace(".", ","),
+            "pct_no_corriente": f"{pct_no_corriente_general:.2f}%".replace(".", ",")
+        }
+
         for entidad, row in capital_clasificado.iterrows():
             corriente = row.get("Corriente", 0)
             no_corriente = row.get("No corriente", 0)
             total = row.get("Total", 0)
 
+            pct_corriente = (corriente / total * 100) if total else 0
+            pct_no_corriente = (no_corriente / total * 100) if total else 0
+
             capital_corriente_no_corriente.append({
                 "entidad": entidad,
                 "corriente": formato_numero(corriente),
                 "no_corriente": formato_numero(no_corriente),
-                "total": formato_numero(total)
+                "total": formato_numero(total),
+                "pct_corriente": f"{pct_corriente:.2f}%".replace(".", ","),
+                "pct_no_corriente": f"{pct_no_corriente:.2f}%".replace(".", ",")
             })
 
         estados = cuotas["estado"].value_counts()
@@ -621,10 +649,10 @@ def dashboard():
         charts=charts,
         capital_por_entidad=capital_por_entidad,
         capital_corriente_no_corriente=capital_corriente_no_corriente,
+        totales_corriente_no_corriente=totales_corriente_no_corriente,
         top_proximos_vencimientos=top_proximos_vencimientos,
         **indicadores
     )
-
 
 @app.route("/cuotas")
 def cuotas():
