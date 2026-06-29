@@ -489,6 +489,7 @@ def dashboard():
     hoy = pd.Timestamp.today().normalize()
 
     vencidas = pd.DataFrame()
+
     charts = {
         "entidades_labels": [],
         "entidades_values": [],
@@ -660,6 +661,7 @@ def dashboard():
         top_proximos_vencimientos=top_proximos_vencimientos,
         **indicadores
     )
+
 
 @app.route("/cuotas")
 def cuotas():
