@@ -488,28 +488,7 @@ def dashboard():
     cuotas = load_cuotas()
     hoy = pd.Timestamp.today().normalize()
 
-    if cuotas.empty:
-        vencidas = pd.DataFrame()
-    else:
-        abiertas = cuotas[
-            ~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)
-        ].copy()
-
-        vencidas = abiertas[
-            abiertas["fecha_vencimiento"] < hoy
-        ].copy()
-
-    metrics = indicadores.copy()
-    metrics["actualizado"] = indicadores.get("ultima_lectura", "")
-    metrics["cuota_mes_promedio"] = indicadores.get("cuota_estimada_mes", "0,00")
-    metrics["cuota_mes_cantidad"] = indicadores.get("cuotas_pendientes", "0")
-    metrics["tna_promedio"] = indicadores.get("tasa_tna", "0,00")
-    metrics["tea_promedio"] = indicadores.get("tasa_tea", "0,00")
-    metrics["cuota_mes_total"] = indicadores.get("total_cuotas_mes", "0,00")
-    metrics["cuota_mes_pendiente"] = indicadores.get("pendiente_mes", "0,00")
-    metrics["ultima_adjudicacion"] = indicadores.get("fecha_adjudicacion", "")
-    metrics["adjudicados_mes"] = indicadores.get("total_prestamos", "0")
-
+    vencidas = pd.DataFrame()
     charts = {
         "entidades_labels": [],
         "entidades_values": [],
@@ -531,9 +510,24 @@ def dashboard():
         "pct_no_corriente": "0,00%"
     }
 
+    metrics = indicadores.copy()
+    metrics["actualizado"] = indicadores.get("ultima_lectura", "")
+    metrics["cuota_mes_promedio"] = indicadores.get("cuota_estimada_mes", "0,00")
+    metrics["cuota_mes_cantidad"] = indicadores.get("cuotas_pendientes", "0")
+    metrics["tna_promedio"] = indicadores.get("tasa_tna", "0,00")
+    metrics["tea_promedio"] = indicadores.get("tasa_tea", "0,00")
+    metrics["cuota_mes_total"] = indicadores.get("total_cuotas_mes", "0,00")
+    metrics["cuota_mes_pendiente"] = indicadores.get("pendiente_mes", "0,00")
+    metrics["ultima_adjudicacion"] = indicadores.get("fecha_adjudicacion", "")
+    metrics["adjudicados_mes"] = indicadores.get("total_prestamos", "0")
+
     if not cuotas.empty:
         abiertas = cuotas[
             ~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)
+        ].copy()
+
+        vencidas = abiertas[
+            abiertas["fecha_vencimiento"] < hoy
         ].copy()
 
         deuda_entidad = (
@@ -544,6 +538,10 @@ def dashboard():
 
         charts["entidades_labels"] = deuda_entidad.index.tolist()
         charts["entidades_values"] = deuda_entidad.values.tolist()
+
+        estados = cuotas["estado"].value_counts()
+        charts["estados_labels"] = estados.index.tolist()
+        charts["estados_count"] = estados.values.tolist()
 
         capital_entidad = (
             abiertas.groupby("entidad")["capital"]
@@ -566,21 +564,36 @@ def dashboard():
         )
 
         capital_clasificado = (
-            abiertas
-            .groupby(["entidad", "clasificacion"])["capital"]
+            abiertas.groupby(["entidad", "clasificacion"])["capital"]
             .sum()
             .unstack(fill_value=0)
         )
 
-        capital_clasificado["Total"] = capital_clasificado.sum(axis=1)
+        if "Corriente" not in capital_clasificado.columns:
+            capital_clasificado["Corriente"] = 0
+
+        if "No corriente" not in capital_clasificado.columns:
+            capital_clasificado["No corriente"] = 0
+
+        capital_clasificado["Total"] = (
+            capital_clasificado["Corriente"] + capital_clasificado["No corriente"]
+        )
+
         capital_clasificado = capital_clasificado.sort_values("Total", ascending=False)
 
-        total_corriente_general = capital_clasificado["Corriente"].sum() if "Corriente" in capital_clasificado.columns else 0
-        total_no_corriente_general = capital_clasificado["No corriente"].sum() if "No corriente" in capital_clasificado.columns else 0
+        total_corriente_general = capital_clasificado["Corriente"].sum()
+        total_no_corriente_general = capital_clasificado["No corriente"].sum()
         total_capital_general = total_corriente_general + total_no_corriente_general
 
-        pct_corriente_general = (total_corriente_general / total_capital_general * 100) if total_capital_general else 0
-        pct_no_corriente_general = (total_no_corriente_general / total_capital_general * 100) if total_capital_general else 0
+        pct_corriente_general = (
+            total_corriente_general / total_capital_general * 100
+            if total_capital_general else 0
+        )
+
+        pct_no_corriente_general = (
+            total_no_corriente_general / total_capital_general * 100
+            if total_capital_general else 0
+        )
 
         totales_corriente_no_corriente = {
             "corriente": formato_numero(total_corriente_general),
@@ -595,8 +608,8 @@ def dashboard():
             no_corriente = row.get("No corriente", 0)
             total = row.get("Total", 0)
 
-            pct_corriente = (corriente / total * 100) if total else 0
-            pct_no_corriente = (no_corriente / total * 100) if total else 0
+            pct_corriente = corriente / total * 100 if total else 0
+            pct_no_corriente = no_corriente / total * 100 if total else 0
 
             capital_corriente_no_corriente.append({
                 "entidad": entidad,
@@ -607,40 +620,34 @@ def dashboard():
                 "pct_no_corriente": f"{pct_no_corriente:.2f}%".replace(".", ",")
             })
 
-        estados = cuotas["estado"].value_counts()
-
-        charts["estados_labels"] = estados.index.tolist()
-        charts["estados_count"] = estados.values.tolist()
-
-        pendientes_flujo = cuotas[
-            (~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)) &
-            (cuotas["fecha_vencimiento"] >= hoy)
+        pendientes_flujo = abiertas[
+            abiertas["fecha_vencimiento"] >= hoy
         ].copy()
 
-        pendientes_flujo["mes_orden"] = pendientes_flujo["fecha_vencimiento"].dt.to_period("M")
+        if not pendientes_flujo.empty:
+            pendientes_flujo["mes_orden"] = pendientes_flujo["fecha_vencimiento"].dt.to_period("M")
 
-        flujo = (
-            pendientes_flujo
-            .groupby("mes_orden")["total"]
-            .sum()
-            .sort_index()
-        )
+            flujo = (
+                pendientes_flujo.groupby("mes_orden")["total"]
+                .sum()
+                .sort_index()
+            )
 
-        charts["meses_labels"] = [m.strftime("%m/%Y") for m in flujo.index]
-        charts["meses_values"] = flujo.values.tolist()
+            charts["meses_labels"] = [m.strftime("%m/%Y") for m in flujo.index]
+            charts["meses_values"] = flujo.values.tolist()
 
-        top_proximos_df = pendientes_flujo.sort_values("fecha_vencimiento").head(10)
+            top_proximos_df = pendientes_flujo.sort_values("fecha_vencimiento").head(10)
 
-        top_proximos_vencimientos = [
-            {
-                "fecha": formato_fecha(row.get("fecha_vencimiento", "")),
-                "entidad": row.get("entidad", ""),
-                "cuota": row.get("nro_cuota", ""),
-                "capital": formato_numero(row.get("capital", 0)),
-                "total": formato_numero(row.get("total", 0))
-            }
-            for _, row in top_proximos_df.iterrows()
-        ]
+            top_proximos_vencimientos = [
+                {
+                    "fecha": formato_fecha(row.get("fecha_vencimiento", "")),
+                    "entidad": row.get("entidad", ""),
+                    "cuota": row.get("nro_cuota", ""),
+                    "capital": formato_numero(row.get("capital", 0)),
+                    "total": formato_numero(row.get("total", 0))
+                }
+                for _, row in top_proximos_df.iterrows()
+            ]
 
     return render_template(
         "dashboard.html",
