@@ -1,304 +1,174 @@
-{% extends 'base.html' %}
-{% block content %}
+@app.route("/dashboard")
+def dashboard():
+    if "user" not in session:
+        return redirect(url_for("login"))
 
-<div class="hero mb-4">
-  <div>
-    <div class="eyebrow">Seguimiento financiero</div>
-    <h2 class="fw-bold mb-1">Tablero de Préstamos</h2>
-    <div class="text-muted">
-      Indicadores calculados desde la hoja <strong>Cuotas</strong>.
-      Última lectura: <strong>{{ metrics.actualizado }}</strong>
-    </div>
-  </div>
-  <a class="btn btn-primary btn-lg" href="{{ url_for('dashboard') }}">Actualizar</a>
-</div>
+    indicadores = calcular_indicadores()
+    cuotas = load_cuotas()
+    hoy = pd.Timestamp.today().normalize()
 
-{% if error %}
-  <div class="alert alert-danger">
-    <strong>Error leyendo datos:</strong> {{ error }}
-  </div>
-{% else %}
+    if cuotas.empty:
+        vencidas = pd.DataFrame()
+    else:
+        abiertas = cuotas[
+            ~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)
+        ].copy()
 
-<div class="row g-3 mb-4">
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="kpi kpi-main">
-      <span>Cuotas faltantes</span>
-      <strong>{{ metrics.cuotas_faltantes }}</strong>
-      <small>Pendientes, próximas o vencidas</small>
-    </div>
-  </div>
+        vencidas = abiertas[
+            abiertas["fecha_vencimiento"] < hoy
+        ].copy()
 
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="kpi success">
-      <span>Cuotas pagadas</span>
-      <strong>{{ metrics.cuotas_pagadas }}</strong>
-      <small>Canceladas según estado</small>
-    </div>
-  </div>
+    metrics = indicadores.copy()
+    metrics["actualizado"] = indicadores.get("ultima_lectura", "")
+    metrics["cuota_mes_promedio"] = indicadores.get("cuota_estimada_mes", "0,00")
+    metrics["cuota_mes_cantidad"] = indicadores.get("cuotas_pendientes", "0")
+    metrics["tna_promedio"] = indicadores.get("tasa_tna", "0,00")
+    metrics["tea_promedio"] = indicadores.get("tasa_tea", "0,00")
+    metrics["cuota_mes_total"] = indicadores.get("total_cuotas_mes", "0,00")
+    metrics["cuota_mes_pendiente"] = indicadores.get("pendiente_mes", "0,00")
+    metrics["ultima_adjudicacion"] = indicadores.get("fecha_adjudicacion", "")
+    metrics["adjudicados_mes"] = indicadores.get("total_prestamos", "0")
 
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="kpi warning">
-      <span>Cuota estimada del mes</span>
-      <strong>{{ metrics.cuota_mes_promedio }}</strong>
-      <small>Promedio mensual · {{ metrics.cuota_mes_cantidad }} cuotas</small>
-    </div>
-  </div>
-
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="kpi">
-      <span>Banco / entidad</span>
-      <strong>{{ metrics.entidades_activas }}</strong>
-      <small>Entidades con deuda vigente</small>
-    </div>
-  </div>
-</div>
-
-<div class="row g-3 mb-4">
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="kpi">
-      <span>Total pendiente</span>
-      <strong>{{ metrics.total_pendiente }}</strong>
-      <small>Capital + intereses + IVA</small>
-    </div>
-  </div>
-
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="kpi">
-      <span>Capital pendiente</span>
-      <strong>{{ metrics.capital_pendiente }}</strong>
-      <small>Saldo de capital de cuotas abiertas</small>
-    </div>
-  </div>
-
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="kpi">
-      <span>Tasa del crédito</span>
-      <strong>{{ metrics.tna_promedio }}</strong>
-      <small>TNA promedio · TEA {{ metrics.tea_promedio }}</small>
-    </div>
-  </div>
-
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="kpi">
-      <span>Fecha de adjudicación</span>
-      <strong>{{ metrics.ultima_adjudicacion }}</strong>
-      <small>{{ metrics.adjudicados_mes }} préstamos adjudicados</small>
-    </div>
-  </div>
-</div>
-
-<div class="row g-3 mb-4">
-  <div class="col-12 col-md-6">
-    <div class="mini-card">
-      <span>Total cuotas del mes</span>
-      <strong>{{ metrics.cuota_mes_total }}</strong>
-    </div>
-  </div>
-
-  <div class="col-12 col-md-6">
-    <div class="mini-card">
-      <span>Pendiente del mes</span>
-      <strong>{{ metrics.cuota_mes_pendiente }}</strong>
-    </div>
-  </div>
-</div>
-
-<div class="row g-4 mb-4">
-  <div class="col-12 col-lg-7">
-    <div class="panel">
-      <h5>Deuda pendiente por entidad</h5>
-      <canvas id="entidades"></canvas>
-    </div>
-  </div>
-
-  <div class="col-12 col-lg-5">
-    <div class="panel">
-      <h5>Estado de cuotas</h5>
-      <canvas id="estados"></canvas>
-    </div>
-  </div>
-</div>
-
-<div class="row g-4 mb-4">
-  <div class="col-12">
-    <div class="panel">
-      <h5>Capital pendiente por entidad</h5>
-
-      <div class="table-responsive">
-        <table class="table table-sm align-middle">
-          <thead>
-            <tr>
-              <th>Entidad</th>
-              <th class="text-end">Capital pendiente</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in capital_por_entidad %}
-            <tr>
-              <td>{{ item.entidad }}</td>
-              <td class="text-end fw-semibold">{{ item.capital }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<div class="row g-4 mb-4">
-  <div class="col-12">
-    <div class="panel">
-      <h5>Capital pendiente corriente y no corriente por entidad</h5>
-
-      <div class="table-responsive">
-        <table class="table table-sm align-middle">
-          <thead>
-            <tr>
-              <th>Entidad</th>
-              <th class="text-end">Capital corriente</th>
-              <th class="text-end">Capital no corriente</th>
-              <th class="text-end">Total capital</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in capital_corriente_no_corriente %}
-            <tr>
-              <td>{{ item.entidad }}</td>
-              <td class="text-end">{{ item.corriente }}</td>
-              <td class="text-end">{{ item.no_corriente }}</td>
-              <td class="text-end fw-semibold">{{ item.total }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<div class="row g-4 mb-4">
-  <div class="col-12">
-    <div class="panel">
-      <h5>Flujo proyectado por mes de vencimiento</h5>
-      <canvas id="meses"></canvas>
-    </div>
-  </div>
-</div>
-
-<div class="row g-4 mb-4">
-  <div class="col-12">
-    <div class="panel">
-      <h5>Top 10 próximos vencimientos</h5>
-
-      <div class="table-responsive">
-        <table class="table table-sm align-middle">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Entidad</th>
-              <th>Cuota</th>
-              <th class="text-end">Capital</th>
-              <th class="text-end">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in top_proximos_vencimientos %}
-            <tr>
-              <td>{{ item.fecha }}</td>
-              <td>{{ item.entidad }}</td>
-              <td>{{ item.cuota }}</td>
-              <td class="text-end">{{ item.capital }}</td>
-              <td class="text-end fw-semibold">{{ item.total }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<script>
-const chartData = {{ charts|default({
-  "entidades_labels": [],
-  "entidades_values": [],
-  "estados_labels": [],
-  "estados_count": [],
-  "meses_labels": [],
-  "meses_values": []
-}, true)|tojson }};
-
-const fmt = (v) => new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  maximumFractionDigits: 0
-}).format(v || 0);
-
-new Chart(document.getElementById('entidades'), {
-  type: 'bar',
-  data: {
-    labels: chartData.entidades_labels,
-    datasets: [{
-      label: 'Total pendiente',
-      data: chartData.entidades_values,
-      borderRadius: 8
-    }]
-  },
-  options: {
-    indexAxis: 'y',
-    responsive: true,
-    plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: (c) => fmt(c.raw) } }
-    },
-    scales: {
-      x: { ticks: { callback: (v) => fmt(v) } }
+    charts = {
+        "entidades_labels": [],
+        "entidades_values": [],
+        "estados_labels": [],
+        "estados_count": [],
+        "meses_labels": [],
+        "meses_values": []
     }
-  }
-});
 
-new Chart(document.getElementById('estados'), {
-  type: 'doughnut',
-  data: {
-    labels: chartData.estados_labels,
-    datasets: [{
-      data: chartData.estados_count
-    }]
-  },
-  options: {
-    responsive: true,
-    plugins: {
-      legend: { position: 'bottom' }
+    capital_por_entidad = []
+    capital_corriente_no_corriente = []
+    top_proximos_vencimientos = []
+
+    totales_corriente_no_corriente = {
+        "corriente": "0,00",
+        "no_corriente": "0,00",
+        "total": "0,00",
+        "pct_corriente": "0,00%",
+        "pct_no_corriente": "0,00%"
     }
-  }
-});
 
-new Chart(document.getElementById('meses'), {
-  type: 'line',
-  data: {
-    labels: chartData.meses_labels,
-    datasets: [{
-      label: 'Total a pagar pendiente',
-      data: chartData.meses_values,
-      tension: .25,
-      fill: true
-    }]
-  },
-  options: {
-    responsive: true,
-    plugins: {
-      tooltip: { callbacks: { label: (c) => fmt(c.raw) } }
-    },
-    scales: {
-      y: { ticks: { callback: (v) => fmt(v) } }
-    }
-  }
-});
-</script>
+    if not cuotas.empty:
+        abiertas = cuotas[
+            ~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)
+        ].copy()
 
-{% endif %}
-{% endblock %}
+        deuda_entidad = (
+            abiertas.groupby("entidad")["total"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+
+        charts["entidades_labels"] = deuda_entidad.index.tolist()
+        charts["entidades_values"] = deuda_entidad.values.tolist()
+
+        capital_entidad = (
+            abiertas.groupby("entidad")["capital"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+
+        capital_por_entidad = [
+            {
+                "entidad": entidad,
+                "capital": formato_numero(capital)
+            }
+            for entidad, capital in capital_entidad.items()
+        ]
+
+        fecha_corte_corriente = hoy + pd.DateOffset(months=12)
+
+        abiertas["clasificacion"] = abiertas["fecha_vencimiento"].apply(
+            lambda x: "Corriente" if pd.notna(x) and x <= fecha_corte_corriente else "No corriente"
+        )
+
+        capital_clasificado = (
+            abiertas
+            .groupby(["entidad", "clasificacion"])["capital"]
+            .sum()
+            .unstack(fill_value=0)
+        )
+
+        capital_clasificado["Total"] = capital_clasificado.sum(axis=1)
+        capital_clasificado = capital_clasificado.sort_values("Total", ascending=False)
+
+        total_corriente_general = capital_clasificado["Corriente"].sum() if "Corriente" in capital_clasificado.columns else 0
+        total_no_corriente_general = capital_clasificado["No corriente"].sum() if "No corriente" in capital_clasificado.columns else 0
+        total_capital_general = total_corriente_general + total_no_corriente_general
+
+        pct_corriente_general = (total_corriente_general / total_capital_general * 100) if total_capital_general else 0
+        pct_no_corriente_general = (total_no_corriente_general / total_capital_general * 100) if total_capital_general else 0
+
+        totales_corriente_no_corriente = {
+            "corriente": formato_numero(total_corriente_general),
+            "no_corriente": formato_numero(total_no_corriente_general),
+            "total": formato_numero(total_capital_general),
+            "pct_corriente": f"{pct_corriente_general:.2f}%".replace(".", ","),
+            "pct_no_corriente": f"{pct_no_corriente_general:.2f}%".replace(".", ",")
+        }
+
+        for entidad, row in capital_clasificado.iterrows():
+            corriente = row.get("Corriente", 0)
+            no_corriente = row.get("No corriente", 0)
+            total = row.get("Total", 0)
+
+            pct_corriente = (corriente / total * 100) if total else 0
+            pct_no_corriente = (no_corriente / total * 100) if total else 0
+
+            capital_corriente_no_corriente.append({
+                "entidad": entidad,
+                "corriente": formato_numero(corriente),
+                "no_corriente": formato_numero(no_corriente),
+                "total": formato_numero(total),
+                "pct_corriente": f"{pct_corriente:.2f}%".replace(".", ","),
+                "pct_no_corriente": f"{pct_no_corriente:.2f}%".replace(".", ",")
+            })
+
+        estados = cuotas["estado"].value_counts()
+
+        charts["estados_labels"] = estados.index.tolist()
+        charts["estados_count"] = estados.values.tolist()
+
+        pendientes_flujo = cuotas[
+            (~cuotas["estado"].astype(str).str.lower().str.strip().str.contains("pag|cancel", na=False)) &
+            (cuotas["fecha_vencimiento"] >= hoy)
+        ].copy()
+
+        pendientes_flujo["mes_orden"] = pendientes_flujo["fecha_vencimiento"].dt.to_period("M")
+
+        flujo = (
+            pendientes_flujo
+            .groupby("mes_orden")["total"]
+            .sum()
+            .sort_index()
+        )
+
+        charts["meses_labels"] = [m.strftime("%m/%Y") for m in flujo.index]
+        charts["meses_values"] = flujo.values.tolist()
+
+        top_proximos_df = pendientes_flujo.sort_values("fecha_vencimiento").head(10)
+
+        top_proximos_vencimientos = [
+            {
+                "fecha": formato_fecha(row.get("fecha_vencimiento", "")),
+                "entidad": row.get("entidad", ""),
+                "cuota": row.get("nro_cuota", ""),
+                "capital": formato_numero(row.get("capital", 0)),
+                "total": formato_numero(row.get("total", 0))
+            }
+            for _, row in top_proximos_df.iterrows()
+        ]
+
+    return render_template(
+        "dashboard.html",
+        metrics=metrics,
+        vencidas=vencidas,
+        charts=charts,
+        capital_por_entidad=capital_por_entidad,
+        capital_corriente_no_corriente=capital_corriente_no_corriente,
+        totales_corriente_no_corriente=totales_corriente_no_corriente,
+        top_proximos_vencimientos=top_proximos_vencimientos,
+        **indicadores
+    )
