@@ -521,6 +521,7 @@ def dashboard():
 
     capital_por_entidad = []
     capital_corriente_no_corriente = []
+    top_proximos_vencimientos = []
 
     if not cuotas.empty:
         abiertas = cuotas[
@@ -600,6 +601,19 @@ def dashboard():
         charts["meses_labels"] = [m.strftime("%m/%Y") for m in flujo.index]
         charts["meses_values"] = flujo.values.tolist()
 
+        top_proximos_df = pendientes_flujo.sort_values("fecha_vencimiento").head(10)
+
+        top_proximos_vencimientos = [
+            {
+                "fecha": formato_fecha(row.get("fecha_vencimiento", "")),
+                "entidad": row.get("entidad", ""),
+                "cuota": row.get("nro_cuota", ""),
+                "capital": formato_numero(row.get("capital", 0)),
+                "total": formato_numero(row.get("total", 0))
+            }
+            for _, row in top_proximos_df.iterrows()
+        ]
+
     return render_template(
         "dashboard.html",
         metrics=metrics,
@@ -607,8 +621,10 @@ def dashboard():
         charts=charts,
         capital_por_entidad=capital_por_entidad,
         capital_corriente_no_corriente=capital_corriente_no_corriente,
+        top_proximos_vencimientos=top_proximos_vencimientos,
         **indicadores
     )
+
 
 @app.route("/cuotas")
 def cuotas():

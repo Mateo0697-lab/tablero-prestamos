@@ -71,42 +71,34 @@
   </div>
 
   <div class="col-12 col-sm-6 col-xl-3">
-    <div class="kpi danger">
-      <span>Monto vencido</span>
-      <strong>{{ metrics.monto_vencido }}</strong>
-      <small>{{ metrics.cuotas_vencidas }} cuotas vencidas</small>
-    </div>
-  </div>
-
-  <div class="col-12 col-sm-6 col-xl-3">
     <div class="kpi">
       <span>Tasa del crédito</span>
       <strong>{{ metrics.tna_promedio }}</strong>
       <small>TNA promedio · TEA {{ metrics.tea_promedio }}</small>
     </div>
   </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi">
+      <span>Fecha de adjudicación</span>
+      <strong>{{ metrics.ultima_adjudicacion }}</strong>
+      <small>{{ metrics.adjudicados_mes }} préstamos adjudicados</small>
+    </div>
+  </div>
 </div>
 
 <div class="row g-3 mb-4">
-  <div class="col-12 col-md-4">
+  <div class="col-12 col-md-6">
     <div class="mini-card">
       <span>Total cuotas del mes</span>
       <strong>{{ metrics.cuota_mes_total }}</strong>
     </div>
   </div>
 
-  <div class="col-12 col-md-4">
+  <div class="col-12 col-md-6">
     <div class="mini-card">
       <span>Pendiente del mes</span>
       <strong>{{ metrics.cuota_mes_pendiente }}</strong>
-    </div>
-  </div>
-
-  <div class="col-12 col-md-4">
-    <div class="mini-card">
-      <span>Fecha de adjudicación</span>
-      <strong>{{ metrics.ultima_adjudicacion }}</strong>
-      <small>{{ metrics.adjudicados_mes }} préstamos adjudicados</small>
     </div>
   </div>
 </div>
@@ -196,19 +188,36 @@
   </div>
 </div>
 
-<div class="row g-4">
-  <div class="col-12 col-lg-6">
+<div class="row g-4 mb-4">
+  <div class="col-12">
     <div class="panel">
-      <div class="panel-title-danger">Cuotas vencidas</div>
-      {% include '_tabla_alertas.html' with context %}
-    </div>
-  </div>
+      <h5>Top 10 próximos vencimientos</h5>
 
-  <div class="col-12 col-lg-6">
-    <div class="panel">
-      <div class="panel-title-warning">Próximos vencimientos</div>
-      {% set vencidas = proximas %}
-      {% include '_tabla_alertas.html' with context %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Entidad</th>
+              <th>Cuota</th>
+              <th class="text-end">Capital</th>
+              <th class="text-end">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in top_proximos_vencimientos %}
+            <tr>
+              <td>{{ item.fecha }}</td>
+              <td>{{ item.entidad }}</td>
+              <td>{{ item.cuota }}</td>
+              <td class="text-end">{{ item.capital }}</td>
+              <td class="text-end fw-semibold">{{ item.total }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
     </div>
   </div>
 </div>
